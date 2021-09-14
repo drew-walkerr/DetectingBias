@@ -5,7 +5,7 @@ ICDs = pd.read_csv('DIAGNOSES_ICD.csv.gz', compression='gzip',
 peek_ICDs = ICDs.head()
 print(peek_ICDs)
 ICDs.info()
-is_SCD = ICDs[ICDs['ICD9_CODE'].str.contains('2826',na=False)]
+is_SCD = ICDs[ICDs['ICD9_CODE'].str.contains('2826', na=False)]
 
 print(is_SCD.head())
 
@@ -34,3 +34,9 @@ SC_NOTES_PATIENTS = SC_NOTES.merge(PATIENTS, on = 'SUBJECT_ID')
 SC_NOTES_PATIENTS.info()
 
 SC_NOTES_PATIENTS.to_csv("SC_NOTES_PATIENTS.csv")
+
+# Find unique count of patients and patient-relevant covariates
+# Find unique chart types and decide to limit them
+    # Remove Radiology, ECG, Respiratory
+# Can we compute how long the text is word-wise?
+# Filter down to
