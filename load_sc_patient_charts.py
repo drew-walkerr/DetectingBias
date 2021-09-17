@@ -5,7 +5,9 @@ ICDs = pd.read_csv('DIAGNOSES_ICD.csv.gz', compression='gzip',
 peek_ICDs = ICDs.head()
 print(peek_ICDs)
 ICDs.info()
-is_SCD = ICDs[ICDs['ICD9_CODE'].str.contains('2826', na=False)]
+#Filter for ICD codes for 282.60-282.69 referring to sickle cell types w/wo crisis
+#2824 for thalassemia w + w/o crisis (282.41-282.42)
+is_SCD = ICDs[ICDs['ICD9_CODE'].str.contains('2826|2824', na=False)]
 
 print(is_SCD.head())
 
@@ -33,10 +35,16 @@ SC_NOTES_PATIENTS = SC_NOTES.merge(PATIENTS, on = 'SUBJECT_ID')
 
 SC_NOTES_PATIENTS.info()
 
-SC_NOTES_PATIENTS.to_csv("SC_NOTES_PATIENTS.csv")
-
+SC_NOTES_PATIENTS_FILTERED = SC_NOTES_PATIENTS[SC_NOTES_PATIENTS["CATEGORY"].str.contains("Radiology|ECG|Respiratory|Echo")==False]
+SC_NOTES_PATIENTS_FILTERED.to_csv("SC_NOTES_PATIENTS_FILTERED.csv")
 # Find unique count of patients and patient-relevant covariates
+# Total of 573 clinical notes, for 23 sickle cell patients over 28 admissions, from 521 unique providers.
+# ICD Codes:
+
+patients_unique_with_notes = SC_NOTES_PATIENTS_FILTERED.nunique()
 # Find unique chart types and decide to limit them
     # Remove Radiology, ECG, Respiratory
 # Can we compute how long the text is word-wise?
-# Filter down to
+# Re run with a column that preserves ICD-09 code in final dataset to double check
+# compare against CF patients?
+# Way to be able to abstract race?
