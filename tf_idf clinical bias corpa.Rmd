@@ -72,8 +72,8 @@ full_df_words_tf_idf %>%
   slice_max(lo_abs, n = 30)%>%
   ungroup() %>%
   ggplot(aes(lo_abs, fct_reorder(word, lo_abs), fill = dataset)) +
-  geom_col(show.legend = FALSE) +
-  facet_wrap(~dataset, ncol = 2, scales = "free") +
+  geom_col(show.legend = FALSE,position = position_dodge(width=0.5)) +
+  facet_wrap(~dataset, ncol = 2, scales = "free")+
   labs(x = "weighted log odds", y = NULL)
 current_time <- Sys.time()
 st <- format(current_time,"%Y-%m-%d_%H_%M")
@@ -99,6 +99,73 @@ saveWidget(my_graph,"scd_notes_wordcloud.html",selfcontained = F)
 webshot("scd_notes_wordcloud.html","fig_1.png", delay =5, vwidth = 480, vheight=480)
 
 write_csv(full_df_words_tf_idf,"full_df_words_tf_idf.csv")
+
+```
+
+# tf-idf within patients from crisis dataset 
+
+* Can we conduct tf-idf to see how text between patients with crisis differ?
+
+```{r, tf_idf_prep}
+
+crisis_patients_subject_id <- crisis_patients %>% 
+  select(SUBJECT_ID,TEXT)
+#Need to remove stopwords here
+crisis_patients_words <- crisis_patients %>% 
+  unnest_tokens(word,TEXT) %>% 
+  group_by(SUBJECT_ID) %>% 
+  filter(!(nchar(word) == 1))%>% 
+  anti_join(stop_words) 
+crisis_patients_words$word <- gsub('[[:punct:]]+', '', crisis_patients_words$word)
+
+crisis_patients_words$word <- gsub('[[:digit:]]+', '', crisis_patients_words$word)
+
+
+
+crisis_patients_words <- crisis_patients_words %>%
+  filter(word != "") %>% 
+  count(word,sort = TRUE,.drop = TRUE) %>% 
+  ungroup()
+
+
+
+crisis_patients_words_tf_idf <- crisis_patients_words %>% 
+  bind_tf_idf(word,SUBJECT_ID,n) %>% 
+  arrange(desc(tf_idf)) %>% 
+  bind_log_odds(feature = word, set = SUBJECT_ID, n = n) %>% 
+  mutate(lo_abs = abs(log_odds_weighted))
+crisis_patients_words_tf_idf %>%
+  group_by(SUBJECT_ID) %>%
+  slice_max(lo_abs, n = 5)%>%
+  ungroup() %>%
+  ggplot(aes(lo_abs, fct_reorder(word, lo_abs), fill = SUBJECT_ID)) +
+  geom_col(show.legend = FALSE,position = position_dodge(width=0.5)) +
+  facet_wrap(~SUBJECT_ID, ncol = 2, scales = "free")+
+  labs(x = "weighted log odds", y = NULL)
+current_time <- Sys.time()
+st <- format(current_time,"%Y-%m-%d_%H_%M")
+
+broad_vs_crisis_tf_idf_plot_filename <- paste0(here("crisis_tf_idf_plot"),st,".png") 
+ggsave(broad_vs_crisis_tf_idf_plot_filename)
+
+
+word_cloud_filename <- paste0(here("word_cloud_scd_crisis"),st,".png") 
+pal <- brewer.pal(8,"Dark2")
+crisis_patients_words %>% 
+  with(wordcloud(word, n, random.order = FALSE, max.words = 50, colors=pal)) 
+
+crisis_patients_words_cloud <- crisis_patients_words %>% 
+  select(-SUBJECT_ID)
+my_graph <- wordcloud2(data=crisis_patients_words_cloud, color = 'random-dark')
+
+
+library("htmlwidgets")
+saveWidget(my_graph,"scd_crisis_notes_wordcloud.html",selfcontained = F)
+
+# and in png or pdf
+webshot("scd_crisis_notes_wordcloud.html","fig_1.png", delay =5, vwidth = 480, vheight=480)
+
+write_csv(crisis_patients_words_tf_idf,"crisis_patients_words_tf_idf.csv")
 
 ```
 
