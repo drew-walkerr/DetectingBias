@@ -20,6 +20,8 @@ library(tm)
 library(wordcloud)
 library(tidytext)
 library(tibbletime)
+library(wordcloud2)
+library(webshot)
 ```
 
 ```{r, load_data }
@@ -47,8 +49,11 @@ full_df_words <- full_df %>%
   group_by(dataset) %>% 
   filter(!(nchar(word) == 1))%>% 
   anti_join(stop_words) 
+full_df_words$word <- gsub('[[:punct:]]+', '', full_df_words$word)
 
 full_df_words$word <- gsub('[[:digit:]]+', '', full_df_words$word)
+
+
 
 full_df_words <- full_df_words %>%
   filter(word != "") %>% 
@@ -75,5 +80,25 @@ st <- format(current_time,"%Y-%m-%d_%H_%M")
 
 broad_vs_crisis_tf_idf_plot_filename <- paste0(here("broad_vs_crisis_tf_idf_plot"),st,".png") 
 ggsave(broad_vs_crisis_tf_idf_plot_filename)
+
+
+word_cloud_filename <- paste0(here("word_cloud_scd"),st,".png") 
+pal <- brewer.pal(8,"Dark2")
+full_df_words %>% 
+  with(wordcloud(word, n, random.order = FALSE, max.words = 50, colors=pal)) 
+
+full_df_words_cloud <- full_df_words %>% 
+  select(-dataset)
+my_graph <- wordcloud2(data=full_df_words_cloud, color = 'random-dark')
+
+
+library("htmlwidgets")
+saveWidget(my_graph,"scd_notes_wordcloud.html",selfcontained = F)
+
+# and in png or pdf
+webshot("scd_notes_wordcloud.html","fig_1.png", delay =5, vwidth = 480, vheight=480)
+
+write_csv(full_df_words_tf_idf,"full_df_words_tf_idf.csv")
+
 ```
 
