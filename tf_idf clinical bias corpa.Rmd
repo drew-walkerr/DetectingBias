@@ -45,8 +45,18 @@ full_df_subject_id <- full_df %>%
 full_df_words <- full_df %>% 
   unnest_tokens(word,TEXT) %>% 
   group_by(dataset) %>% 
+  filter(!(nchar(word) == 1))%>% 
+  anti_join(stop_words) 
+
+full_df_words$word <- gsub('[[:digit:]]+', '', full_df_words$word)
+
+full_df_words <- full_df_words %>%
+  filter(word != "") %>% 
   count(word,sort = TRUE,.drop = TRUE) %>% 
   ungroup()
+
+
+
 full_df_words_tf_idf <- full_df_words %>% 
   bind_tf_idf(word,dataset,n) %>% 
   arrange(desc(tf_idf)) %>% 
@@ -54,7 +64,7 @@ full_df_words_tf_idf <- full_df_words %>%
   mutate(lo_abs = abs(log_odds_weighted))
 full_df_words_tf_idf %>%
   group_by(dataset) %>%
-  slice_max(lo_abs, n = 25)%>%
+  slice_max(lo_abs, n = 30)%>%
   ungroup() %>%
   ggplot(aes(lo_abs, fct_reorder(word, lo_abs), fill = dataset)) +
   geom_col(show.legend = FALSE) +
