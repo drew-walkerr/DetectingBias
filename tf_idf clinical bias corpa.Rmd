@@ -8,7 +8,6 @@ output: html_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(remotes)
-install_github("juliasilge/tidylo")
 library(tidylo)
 library(tidyverse)
 library(stargazer)
@@ -16,7 +15,6 @@ library(table1)
 library(lubridate)
 library(redcapAPI)
 library(here)
-library(ruca)
 library(postmastr)
 library(tm)
 library(wordcloud)
@@ -32,32 +30,40 @@ crisis_patients <- read_csv("SC_NOTES_PATIENTS_CRISIS.csv")
 crisis_patients <- crisis_patients %>% 
   mutate(dataset = "crisis")
 
+#full broad and crisis patient cohorts 
+full_df <- bind_rows(broad_patients,crisis_patients)
+
 
 ```
 
 # tf-idf from sl code
 ```{r, tf_idf_prep}
 
-ff_record_id <- tf_redcap %>% 
-  select(record_id, ff)
-ff_words <- tf_redcap %>% 
-  unnest_tokens(word,issues) %>% 
-  left_join(ff_record_id,by = "record_id") %>% 
-  group_by(ff) %>% 
+full_df_subject_id <- full_df %>% 
+  select(SUBJECT_ID,dataset)
+#Need to remove stopwords here
+full_df_words <- full_df %>% 
+  unnest_tokens(word,TEXT) %>% 
+  group_by(dataset) %>% 
   count(word,sort = TRUE,.drop = TRUE) %>% 
   ungroup()
-ff_words_tf_idf <- ff_words %>% 
-  bind_tf_idf(word,ff,n) %>% 
+full_df_words_tf_idf <- full_df_words %>% 
+  bind_tf_idf(word,dataset,n) %>% 
   arrange(desc(tf_idf)) %>% 
-  bind_log_odds(feature = word, set = ff, n = n) %>% 
+  bind_log_odds(feature = word, set = dataset, n = n) %>% 
   mutate(lo_abs = abs(log_odds_weighted))
-ff_words_tf_idf %>%
-  group_by(ff) %>%
-  slice_max(lo_abs, n = 15)%>%
+full_df_words_tf_idf %>%
+  group_by(dataset) %>%
+  slice_max(lo_abs, n = 25)%>%
   ungroup() %>%
-  ggplot(aes(lo_abs, fct_reorder(word, lo_abs), fill = ff)) +
+  ggplot(aes(lo_abs, fct_reorder(word, lo_abs), fill = dataset)) +
   geom_col(show.legend = FALSE) +
-  facet_wrap(~ff, ncol = 2, scales = "free") +
+  facet_wrap(~dataset, ncol = 2, scales = "free") +
   labs(x = "weighted log odds", y = NULL)
+current_time <- Sys.time()
+st <- format(current_time,"%Y-%m-%d_%H_%M")
+
+broad_vs_crisis_tf_idf_plot_filename <- paste0(here("broad_vs_crisis_tf_idf_plot"),st,".png") 
+ggsave(broad_vs_crisis_tf_idf_plot_filename)
 ```
 
