@@ -13,6 +13,10 @@ from nltk.stem import PorterStemmer
 import string
 from wordcloud import WordCloud
 import matplotlib.pyplot as plt
+import spacy
+from spacy.lang.en import English
+
+nlp = English()  # just the language with no model
 
 CRISIS_PATIENTS = pd.read_csv("SC_NOTES_PATIENTS_CRISIS.csv")
 CRISIS_PATIENTS.insert(19,"dataset","crisis")
@@ -26,51 +30,28 @@ broad_corpus = ','.join(BROAD_PATIENTS['TEXT'])
 
 corpus_strings = [crisis_corpus,broad_corpus]
 
-# now lets say we want to do our homework re TF-IDF!
-#first, we want to tokenize -- pull out all the words
 
-word_tokens = word_tokenize(full_corpus)  #grab all of the words out of our lines object
-stop_words = stopwords.words('english')
-tokens_without_sw = [word for word in word_tokens if not word in stop_words]
-print(tokens_without_sw)
-punct = list(string.punctuation)
-tokens_wo_punct = [word for word in tokens_without_sw if not word in punct]
-print(tokens_wo_punct)
-punct_extra = list('”')
-tokens_wo_punct2 = [word for word in tokens_wo_punct if not word in punct_extra]
-print(tokens_wo_punct2)
-final_tokens = tokens_wo_punct2
-len(word_tokens)
-len(final_tokens)
-final_string=(" ").join(final_tokens)
-wordcloud = WordCloud(width = 1000, height = 500).generate(final_string)
-plt.figure(figsize=(15,8))
-plt.imshow(wordcloud)
-plt.axis("off")
-plt.savefig("SC Python Wordcloud"+".png", bbox_inches='tight')
-plt.show()
-plt.close()
+sentences = []
+for row in full_dataframe.iterrows():
+    for sentence in sent_tokenize(full_dataframe['TEXT']):
+        sentences.append((row[1], sentence))
+new_df = pandas.DataFrame(sentences, columns=['ROW_ID_x', 'SENTENCE'])
 
-### TF-IDF
-all_txt_files = ["SC_NOTES_PATIENTS_BROAD.csv","SC_NOTES_PATIENTS_CRISIS.csv"]
-#import the TfidfVectorizer from Scikit-Learn.
-from sklearn.feature_extraction.text import TfidfVectorizer
-from pathlib import Path
-vectorizer = TfidfVectorizer(max_df=.65, min_df=1, stop_words=None, use_idf=True, norm=None)
-transformed_documents = vectorizer.fit_transform(corpus_strings)
+#sentences = []
+#for row in full_dataframe['TEXT'].iteritems():
+#    for sentence in row[1].split('.'):
+#        if sentence != '':
+ #           sentences.append((row[0], sentence))
+#new_df = pd.DataFrame(sentences, columns=['ROW_ID_x', 'SENTENCE'])
 
-transformed_documents_as_array = transformed_documents.toarray()
-# use this line of code to verify that the numpy array represents the same number of documents that we have in the file list
-len(transformed_documents_as_array)
-# make the output folder if it doesn't already exist
-Path("./tf_idf_output").mkdir(parents=True, exist_ok=True)
+full_dataframe["Sentence"] = full_dataframe["TEXT"].apply(lambda x: sent_tokenize(x))
 
-# loop each item in transformed_documents_as_array, using enumerate to keep track of the current position
-for counter, doc in enumerate(transformed_documents_as_array):
-    # construct a dataframe
-    tf_idf_tuples = list(zip(vectorizer.get_feature_names(), doc))
-    one_doc_as_df = pd.DataFrame.from_records(tf_idf_tuples, columns=['term', 'score']).sort_values(by='score', ascending=False).reset_index(drop=True)
-    output_filenames = [str(txt_file).replace(".csv", "tf_idf.csv").replace("txt/", "tf_idf_output/") for txt_file in
-                        all_txt_files]
-    # output to a csv using the enumerated value for the filename
-    one_doc_as_df.to_csv(output_filenames[counter])
+sentence_tokens = sent_tokenize(full_dataframe['TEXT'])
+nlp.add_pipe('sentencizer')
+full_dataframe["Sentence"] = full_dataframe["TEXT"].apply(lambda x: [sent.text for sent in nlp(x).sents])
+full_dataframe = full_dataframe.explode("Sentence", ignore_index=True)
+full_dataframe.rename(columns={"Unnamed: 0": "ROW_ID_new"}, inplace=True)
+full_dataframe.index.name = "Sentence ID"
+
+
+full_dataframe.to_csv("full_dataframe_sentenced.csv")
