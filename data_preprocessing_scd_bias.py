@@ -30,13 +30,6 @@ broad_corpus = ','.join(BROAD_PATIENTS['TEXT'])
 
 corpus_strings = [crisis_corpus,broad_corpus]
 
-
-sentences = []
-for row in full_dataframe.iterrows():
-    for sentence in sent_tokenize(full_dataframe['TEXT']):
-        sentences.append((row[1], sentence))
-new_df = pandas.DataFrame(sentences, columns=['ROW_ID_x', 'SENTENCE'])
-
 #sentences = []
 #for row in full_dataframe['TEXT'].iteritems():
 #    for sentence in row[1].split('.'):
@@ -44,14 +37,14 @@ new_df = pandas.DataFrame(sentences, columns=['ROW_ID_x', 'SENTENCE'])
  #           sentences.append((row[0], sentence))
 #new_df = pd.DataFrame(sentences, columns=['ROW_ID_x', 'SENTENCE'])
 
-full_dataframe["Sentence"] = full_dataframe["TEXT"].apply(lambda x: sent_tokenize(x))
-
-sentence_tokens = sent_tokenize(full_dataframe['TEXT'])
 nlp.add_pipe('sentencizer')
 full_dataframe["Sentence"] = full_dataframe["TEXT"].apply(lambda x: [sent.text for sent in nlp(x).sents])
 full_dataframe = full_dataframe.explode("Sentence", ignore_index=True)
 full_dataframe.rename(columns={"Unnamed: 0": "ROW_ID_new"}, inplace=True)
 full_dataframe.index.name = "Sentence ID"
 
+full_dataframe['Sentence'].replace(r'\s+|\\n', ' ', regex=True, inplace=True)
+
+full_dataframe = full_dataframe[full_dataframe['Sentence'].map(len) > 15]
 
 full_dataframe.to_csv("full_dataframe_sentenced.csv")
