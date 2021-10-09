@@ -46,5 +46,34 @@ full_dataframe.index.name = "Sentence ID"
 full_dataframe['Sentence'].replace(r'\s+|\\n', ' ', regex=True, inplace=True)
 
 full_dataframe = full_dataframe[full_dataframe['Sentence'].map(len) > 15]
+full_dataframe["questioning_credibility"] = ""
+full_dataframe["questioning_credibility_quote"] = ""
+full_dataframe["disapproval"] = ""
+full_dataframe["disapproval_quote"] = ""
+full_dataframe["stereotyping"] = ""
+full_dataframe["stereotyping_quote"] = ""
+full_dataframe["difficult_patient"] = ""
+full_dataframe["difficult_patient_quote"] = ""
+full_dataframe["unilateral_decisions"] = ""
+full_dataframe["unilateral_decisions_quote"] = ""
+full_dataframe["compliment"] = ""
+full_dataframe["compliment_quote"] = ""
+full_dataframe["approval"] = ""
+full_dataframe["approval_quote"] = ""
+full_dataframe["self_disclosure"] = ""
+full_dataframe["self_disclosure_quote"] = ""
+full_dataframe["minimize_blame"] = ""
+full_dataframe["minimize_blame_quote"] = ""
+full_dataframe["personalize"] = ""
+full_dataframe["personalize_quote"] = ""
+full_dataframe["bilateral_decision"] = ""
+full_dataframe["bilateral_decision_quote"] = ""
+full_dataframe["notes_or_concerns"] = ""
+
 
 full_dataframe.to_csv("full_dataframe_sentenced.csv")
+
+
+head_dataframe <- full_dataframe.head()
+
+head_dataframe.to_csv("head_dataframe_preprocessed.csv")

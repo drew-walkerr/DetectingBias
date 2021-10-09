@@ -1,0 +1,38 @@
+---
+title: "data_preprocessing_bias"
+author: "Drew Walker"
+date: "10/8/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(tidytext)
+```
+
+```{r, data_load}
+broad_patients <- read_csv("SC_NOTES_PATIENTS_BROAD.csv")
+broad_patients <- broad_patients %>% 
+  mutate(dataset = "broad")
+crisis_patients <- read_csv("SC_NOTES_PATIENTS_CRISIS.csv")
+crisis_patients <- crisis_patients %>% 
+  mutate(dataset = "crisis")
+
+#full broad and crisis patient cohorts 
+full_df <- bind_rows(broad_patients,crisis_patients)
+```
+# Text preprocessing
+```{r, text_preprocessing}
+full_df_sentences <- full_df %>%
+  unnest_sentences(sentence,TEXT,to_lower = FALSE)
+
+full_df_sentences$sentence <- gsub("[\r\n]","",full_df_sentences$sentence)
+
+full_df_sentences_clean <- full_df_sentences%>% filter(nchar(sentence)>15)
+
+
+  #remove new line breaks
+  #remove strings <15 char
+```
+
