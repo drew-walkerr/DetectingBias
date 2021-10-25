@@ -1,0 +1,61 @@
+---
+title: "lexicon_assignment_3"
+author: "Drew Walker"
+date: "10/22/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(tidytext)
+library(tm)
+```
+
+```{r,load_data}
+crisis_df_raw <- read_csv("crisis_dataframe_preprocessed.csv")
+
+quotes_crisis <- crisis_df_raw %>% 
+  filter(grepl("\"",Sentence, ignore.case = TRUE)) %>% mutate(quoted_words = stringi::stri_extract_all_regex(Sentence, '\"(.+?)\"'))
+
+quotes_crisis$quoted_words <- gsub('[[:punct:]]+', '', quotes_crisis$quoted_words)
+
+quotes_crisis_words <- quotes_crisis %>% 
+  tidytext::unnest_tokens(word,quoted_words) 
+
+quotes_crisis_bigrams <- quotes_crisis %>% 
+  tidytext::unnest_tokens(ngram,quoted_words,token = "ngrams", n = 2) 
+
+quotes_crisis_trigrams <- quotes_crisis %>% 
+  tidytext::unnest_tokens(ngram,quoted_words,token = "ngrams", n = 3) 
+
+
+
+
+```
+
+
+```{r quotes-breakdown}
+#Crisis DF breakdowns
+
+by_subject_id <- crisis_df_raw %>% 
+  group_by(SUBJECT_ID) %>% 
+  summarize(line_count = n())
+
+patient_charts <-crisis_df_raw %>% 
+  group_by(SUBJECT_ID) %>% 
+  distinct(ROW_ID_new) %>% 
+  summarize(chart_count = n())
+#quotes per patient
+quoted_lines_per_pt<- quotes_crisis %>% 
+  group_by(SUBJECT_ID) %>% 
+  summarize(line_count = n())
+
+#quoted charts per patient
+quoted_charts_per_pt <-quotes_crisis %>% 
+  group_by(SUBJECT_ID) %>% 
+  distinct(ROW_ID_new) %>% 
+  summarize(chart_count = n())
+
+```
+
