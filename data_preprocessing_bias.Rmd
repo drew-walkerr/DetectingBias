@@ -29,10 +29,31 @@ full_df_sentences <- full_df %>%
 
 full_df_sentences$sentence <- gsub("[\r\n]","",full_df_sentences$sentence)
 
-full_df_sentences_clean <- full_df_sentences%>% filter(nchar(sentence)>15)
-
-
-  #remove new line breaks
-  #remove strings <15 char
+full_df_sentences_clean <- full_df_sentences%>% filter(nchar(sentence)>15) %>% 
+  mutate(questioning_credibility="",
+         questioning_credibility_quote="",
+         disapproval="",
+         disapproval_quote="",
+         stereotyping="",
+         stereotyping_quote="",
+         difficult_patient="",
+         difficult_patient_quote="",
+         unilateral_decisions="",
+         unilateral_decisions_quote="",
+         compliment="",
+         compliment_quote="",
+         approval="",
+         approval_quote="",
+         self_disclosure="",
+         self_disclosure_quote="",
+         minimize_blame="",
+         minimize_blame_quote="",
+         personalize="",
+         personalize_quote="",
+         bilateral_decision="",
+         bilateral_decision_quote="",
+         notes_or_concerns="")
+write_csv(full_df_sentences_clean,"full_df_sentences_clean.csv")
+# This actually filters out more than the python code, likely an issue with slightly different regex 
 ```
 

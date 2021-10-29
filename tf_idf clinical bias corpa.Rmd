@@ -165,7 +165,9 @@ saveWidget(my_graph,"scd_crisis_notes_wordcloud.html",selfcontained = F)
 # and in png or pdf
 webshot("scd_crisis_notes_wordcloud.html","fig_1.png", delay =5, vwidth = 480, vheight=480)
 
-write_csv(crisis_patients_words_tf_idf,"crisis_patients_words_tf_idf.csv")
+crisis_patients_words_tf_idf %>%
+  group_by(SUBJECT_ID) %>%
+  slice_max(lo_abs, n = 5) %>% write_csv("crisis_head_patients_words_tf_idf.csv")
 
 ```
 

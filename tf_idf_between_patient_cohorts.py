@@ -52,7 +52,7 @@ plt.show()
 plt.close()
 
 ### TF-IDF
-
+all_txt_files = ["SC_NOTES_PATIENTS_BROAD.csv","SC_NOTES_PATIENTS_CRISIS.csv"]
 #import the TfidfVectorizer from Scikit-Learn.
 from sklearn.feature_extraction.text import TfidfVectorizer
 from pathlib import Path
@@ -63,13 +63,14 @@ transformed_documents_as_array = transformed_documents.toarray()
 # use this line of code to verify that the numpy array represents the same number of documents that we have in the file list
 len(transformed_documents_as_array)
 # make the output folder if it doesn't already exist
-# Path("./tf_idf_output").mkdir(parents=True, exist_ok=True)
+Path("./tf_idf_output").mkdir(parents=True, exist_ok=True)
 
 # loop each item in transformed_documents_as_array, using enumerate to keep track of the current position
 for counter, doc in enumerate(transformed_documents_as_array):
     # construct a dataframe
     tf_idf_tuples = list(zip(vectorizer.get_feature_names(), doc))
     one_doc_as_df = pd.DataFrame.from_records(tf_idf_tuples, columns=['term', 'score']).sort_values(by='score', ascending=False).reset_index(drop=True)
-
+    output_filenames = [str(txt_file).replace(".csv", "tf_idf.csv").replace("txt/", "tf_idf_output/") for txt_file in
+                        all_txt_files]
     # output to a csv using the enumerated value for the filename
-    one_doc_as_df.to_csv("tf_idf.csv")
+    one_doc_as_df.to_csv(output_filenames[counter])

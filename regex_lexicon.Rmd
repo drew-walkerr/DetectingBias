@@ -10,6 +10,11 @@ knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(tidytext)
 library(tm)
+library(data.table)
+library(R.utils)
+library(table1)
+library(knitr)
+library(wordcloud)
 ```
 
 ```{r,load_data}
@@ -21,15 +26,25 @@ quotes_crisis <- crisis_df_raw %>%
 quotes_crisis$quoted_words <- gsub('[[:punct:]]+', '', quotes_crisis$quoted_words)
 
 quotes_crisis_words <- quotes_crisis %>% 
-  tidytext::unnest_tokens(word,quoted_words) 
+  tidytext::unnest_tokens(word,quoted_words)
+
+quotes_crisis_words %>% 
+  count(word) %>% 
+  with(wordcloud(word,n,max.words=100,min.freq=2))
 
 quotes_crisis_bigrams <- quotes_crisis %>% 
   tidytext::unnest_tokens(ngram,quoted_words,token = "ngrams", n = 2) 
 
+quotes_crisis_bigrams %>% 
+  count(ngram) %>% 
+  with(wordcloud(ngram,n,max.words=100,min.freq=1))
+
 quotes_crisis_trigrams <- quotes_crisis %>% 
   tidytext::unnest_tokens(ngram,quoted_words,token = "ngrams", n = 3) 
 
-
+quotes_crisis_trigrams %>% 
+  count(ngram) %>% 
+  with(wordcloud(ngram,n,max.words=100,min.freq=1))
 
 
 ```
@@ -49,13 +64,64 @@ patient_charts <-crisis_df_raw %>%
 #quotes per patient
 quoted_lines_per_pt<- quotes_crisis %>% 
   group_by(SUBJECT_ID) %>% 
-  summarize(line_count = n())
+  summarize(quoted_line_count = n())
 
 #quoted charts per patient
 quoted_charts_per_pt <-quotes_crisis %>% 
   group_by(SUBJECT_ID) %>% 
   distinct(ROW_ID_new) %>% 
-  summarize(chart_count = n())
+  summarize(quoted_chart_count = n())
+
+patient_quotes_df <- plyr::join_all(list(by_subject_id,patient_charts,quoted_lines_per_pt,quoted_charts_per_pt), by='SUBJECT_ID', type='left') 
+
+patient_quotes_df[is.na(patient_quotes_df)]<- 0
+patient_quotes_df <- patient_quotes_df %>%
+  mutate(percent_quoted_charts =
+           quoted_chart_count/chart_count,
+         percent_quoted_lines =
+           quoted_line_count/line_count)
+png("quoted_charts.png")
+hist(patient_quotes_df$percent_quoted_charts,
+     main = "Histogram of Percentage of Quoted Charts")
+dev.off()
+png("quoted_lines.png")
+hist(patient_quotes_df$percent_quoted_lines,
+     main = "Histogram of Percentage of Quoted Lines within patient charts")
+dev.off()
+
+table1(~line_count + chart_count + quoted_line_count+quoted_chart_count+percent_quoted_charts+percent_quoted_lines,data =patient_quotes_df)
+
+colnames(patient_quotes_df)
+```
+
+# Subjectivity analysis MPQA
+
+```{r subj}
+tokenized_crisis_df <- crisis_df_raw %>% 
+  unnest_tokens(word,TEXT)
+  
+subjectivity <- fread("subjectivity.csv.gz",header = FALSE) %>% 
+  select(word = V1,
+         subjectivity = V2,
+         sentiment = V3)
+
+mpqa_words <- tokenized_crisis_df %>%
+  inner_join(subjectivity, by="word") %>% 
+  group_by(subjectivity,word) %>% 
+  mutate(word_count = n())
+
+subjectivity_top_terms <- mpqa_words %>%
+  group_by(subjectivity) %>%
+  distinct(word,subjectivity,.keep_all=TRUE) %>% 
+  slice_max(word_count, n = 5) %>% 
+  arrange(-word_count) %>% 
+  select(word,subjectivity,word_count)
+
+kable(subjectivity_top_terms)
+
+
 
 ```
+
+Nearly all top terms identified in the subjectivity lexicon are medical terminologies. We want more of the breakdown of subjectivity within the narrative free-texts in which providers are summarizing a patient's condition or actions.
 

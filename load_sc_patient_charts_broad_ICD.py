@@ -38,6 +38,7 @@ SC_NOTES_PATIENTS.info()
     # Remove Radiology, ECG, Respiratory, Echo notes
 SC_NOTES_PATIENTS_FILTERED = SC_NOTES_PATIENTS[SC_NOTES_PATIENTS["CATEGORY"].str.contains("Radiology|ECG|Respiratory|Echo")==False]
 SC_NOTES_PATIENTS_FILTERED.to_csv("SC_NOTES_PATIENTS_BROAD.csv")
+SC_NOTES_PATIENTS_FILTERED.head(100).to_csv("SC_NOTES_PATIENTS_BROAD_HEAD.csv")
 
 
 patients_unique_with_notes = SC_NOTES_PATIENTS_FILTERED.nunique()

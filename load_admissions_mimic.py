@@ -18,10 +18,19 @@ NOTES = pd.read_csv('NOTEEVENTS.csv.gz', compression='gzip',
 peek_NOTES = NOTES.head()
 print(peek_NOTES)
 NOTES.info()
-
-SC_NOTES = pd.merge(NOTES,patients_unique, on = 'SUBJECT_ID', how = 'right')
-
+SC_NOTES = NOTES.merge(patients_unique, on = 'SUBJECT_ID')
 print(SC_NOTES['TEXT'])
-
 print(SC_NOTES.head())
 
+SC_NOTES.info()
+
+PATIENTS = pd.read_csv('PATIENTS.csv.gz', compression='gzip',
+    header=0, sep=',', quotechar='"')
+peek_patients = PATIENTS.head()
+print(peek_patients)
+
+SC_NOTES_PATIENTS = SC_NOTES.merge(PATIENTS, on = 'SUBJECT_ID')
+
+SC_NOTES_PATIENTS.info()
+
+SC_NOTES_PATIENTS.to_csv("SC_NOTES_PATIENTS.csv")

@@ -73,7 +73,10 @@ full_dataframe["notes_or_concerns"] = ""
 
 full_dataframe.to_csv("full_dataframe_sentenced.csv")
 
+crisis_annotatable = full_dataframe[full_dataframe['dataset'].str.contains('crisis')]
 
-head_dataframe <- full_dataframe.head()
+crisis_annotatable.to_csv("crisis_dataframe_preprocessed.csv")
+
+head_dataframe = full_dataframe.head()
 
 head_dataframe.to_csv("head_dataframe_preprocessed.csv")
