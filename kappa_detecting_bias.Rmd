@@ -1,0 +1,35 @@
+---
+title: "round_3_reliability"
+author: "Drew Walker"
+date: "10/24/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(irr)
+library(janitor)
+```
+
+
+```{r read_data}
+raw_annotation_data_dw_cl <- read_csv("gold_standard_bias_annotation_doc_training") %>% 
+  clean_names()  %>% 
+  select(sentence_id,text,quote_use)
+# FILTER duplicate == 0
+# Change variables to reflect new sheet. 
+```
+
+```{r kappas}
+
+#cbdsmokeshop
+quote_use <- raw_annotation_data_dw_cl %>% 
+  select(quote_use,quote_use_2)
+
+quote_use_kappa <- irr::kappa2(quote_use)
+quote_use_kappa
+```
+
+
+

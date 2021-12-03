@@ -15,6 +15,7 @@ from wordcloud import WordCloud
 import matplotlib.pyplot as plt
 import spacy
 from spacy.lang.en import English
+import numpy as np
 
 ICDs = pd.read_csv('DIAGNOSES_ICD.csv.gz', compression='gzip',
     header=0, sep=',', quotechar='"')
@@ -73,6 +74,13 @@ quoted_dataframe = full_dataframe.loc[full_dataframe['Sentence'].str.contains(re
 quoted_dataframe["scare_quote"] = ""
 quoted_dataframe["annotator_comments"] = ""
 quoted_dataframe["not_patient_quote"] = ""
-# 3842 quoted unique sentences total of 1,510,650 sentences
+# 3842 quoted charts sentences total of 1,510,650 sentences
 quoted_dataframe2 = quoted_dataframe.drop_duplicates(subset=['Sentence'])
 quoted_dataframe2.to_csv("quoted_dataframe_annotate.csv")
+
+len(np.unique(quoted_dataframe2['CGID']))
+# 545 caregivers
+len(np.unique(quoted_dataframe2['ROW_ID_x']))
+len(np.unique(quoted_dataframe2['SUBJECT_ID']))
+len(np.unique(quoted_dataframe2['HADM_ID']))
+
