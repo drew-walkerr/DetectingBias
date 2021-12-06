@@ -1,13 +1,14 @@
 # http://rasbt.github.io/mlxtend/user_guide/classifier/EnsembleVoteClassifier/
 # This is the general format I'm going to use for the BOW classifier for the detecting bias project.
-
-from sklearn import datasets
-
-
+import pandas as pd
+import numpy
 from sklearn import model_selection
 from sklearn.model_selection import train_test_split
+from sklearn.model_selection import StratifiedKFold
 from sklearn import feature_selection
 from sklearn.feature_extraction.text import TfidfTransformer
+from sklearn.feature_extraction.text import CountVectorizer
+
 from sklearn.pipeline import Pipeline
 from sklearn.linear_model import LogisticRegression
 from sklearn.naive_bayes import GaussianNB
@@ -21,7 +22,9 @@ from sklearn.naive_bayes import MultinomialNB
 # Import libraries for predcton
 from sklearn import metrics
 from sklearn.metrics import confusion_matrix,accuracy_score,roc_auc_score,roc_curve,auc,f1_score
-
+import nltk
+nltk.download('punkt')
+nltk.download('stopwords')
 from wordcloud import WordCloud
 # Load in Data
 
@@ -37,25 +40,38 @@ gold_standard = pd.read_csv("gold_standard_bias_annotation_doc_training.csv")
 # paragraph on canvas (can be included in the same doc as hw 8 below).
 
 
-X_train, X_test, y_train, y_test = train_test_split(gold_standard["Sentence"], gold_standard["quote_use"].values , test_size=0.20, random_state=0)
+#X_train, X_test, y_train, y_test = train_test_split(gold_standard["Sentence"], gold_standard["quote_use"].values , test_size=0.20, random_state=0)
 # Use k-fold
 # Show the size of our datasets
-print('X Train Size:',X_train.shape)
-print('X Test Size:',X_test.shape)
+#print('X Train Size:',X_train.shape)
+# print('X Test Size:',X_test.shape)
+skf = StratifiedKFold(n_splits=10)
+X = gold_standard['Sentence']
+y = gold_standard['quote_use']
 
+metrics = []
 
-# Create a Counter of tokens
-count_vectorizer = CountVectorizer(decode_error='ignore', lowercase=True, min_df=2)
-# Apply it on the train data to get the vocabulary and the mapping. This vocab and mapping is then applied to the test set.
-# Before, we convert to Unicode to avoid issues with CountVectorizer
-train = count_vectorizer.fit_transform(X_train.values.astype('U'))
-test = count_vectorizer.transform(X_test.values.astype('U'))
+skf = StratifiedKFold(n_splits=5)
+for train_index, test_index in skf.split(X, y):
+    X_train, X_test = X[train_index], X[test_index]
+    y_train, y_test = y[train_index], y[test_index]
 
+    vect = CountVectorizer(ngram_range=(1,2), max_features=1000 , stop_words="english")
+    X_train_dtm = vect.fit_transform(X_train)
+    X_test_dtm = vect.transform(X_test)
+    nb = MultinomialNB()
+    nb.fit(X_train_dtm, y_train)
+    y_pred_class = nb.predict(X_test_dtm)
 
-print('Train size: ',train.shape)
-print('Test size: ',test.shape)
-vocab = list(count_vectorizer.vocabulary_.items())
-print(vocab[:10])
+    metrics.append(accuracy_score(y_test, y_pred_class))
+    metrics2 = []
+    
+metrics = numpy.array(metrics)
+
+print('Mean accuracy: ', numpy.mean(metrics, axis=0))
+print('Std for accuracy: ', numpy.std(metrics, axis=0))
+print(metrics.classification_report(y_test, y_pred_class,  digits=5))
+
 
 # try multiple ways of calculating features
 # Create the numericalizer TFIDF for lowercase
@@ -105,7 +121,6 @@ def plot_roc_curve(y_test, y_pred):
 
 y_pred = model.predict(test)
 
-print(metrics.classification_report(y_test, y_pred,  digits=5))
 plot_confussion_matrix(y_test, y_pred)
 plot_roc_curve(y_test, y_pred)
 
@@ -153,7 +168,7 @@ eclf = EnsembleVoteClassifier(clfs=[clf1, clf2, clf3], weights=[1,1,1])
 labels = ['Logistic Regression', 'Random Forest', 'Naive Bayes', 'Ensemble']
 for clf, label in zip([clf1, clf2, clf3, eclf], labels):
 
-    scores = model_selection.cross_val_score(clf, as.array(train), as.array(y_train),
+    scores = model_selection.cross_val_score(clf, train, y_train),
                                               cv=5,
                                               scoring='accuracy')
     print("Accuracy: %0.2f (+/- %0.2f) [%s]"
