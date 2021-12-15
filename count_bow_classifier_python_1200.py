@@ -29,7 +29,7 @@ from wordcloud import WordCloud
 # Load in Data
 
 
-gold_standard = pd.read_csv("gold_standard_bias_annotation_doc_training_1200.csv.csv")
+gold_standard = pd.read_csv("gold_standard_bias_annotation_doc_training_1200.csv")
 
 # SPLIT
 # 1. First, for HW 7, write a script which loads your labeled dataset and divides it into a training-
@@ -52,15 +52,16 @@ gold_standard = pd.read_csv("gold_standard_bias_annotation_doc_training_1200.csv
 # Show the size of our datasets
 #print('X Train Size:',X_train.shape)
 # print('X Test Size:',X_test.shape)
-X = gold_standard['Sentence']
-y = gold_standard['quote_use']
+X = gold_standard['Sentence'].fillna(' ')
+y = gold_standard['quote_use'].fillna(' ')
+seed = 5318008
 #Hyperparameters
 max_features_model = 3000
-splits = 5
+splits = 3
 model_name = "MultinomialNaiveBayes"
 vectorization = "count"
 #Splitting and model
-skf = StratifiedKFold(n_splits=splits)
+skf = StratifiedKFold(n_splits=splits,random_state=seed,shuffle=True)
 for train_index, test_index in skf.split(X, y):
     X_train, X_test = X[train_index], X[test_index]
     y_train, y_test = y[train_index], y[test_index]
@@ -127,3 +128,16 @@ def plot_roc_curve(y_test, y_pred_class):
 plot_confussion_matrix(y_test, y_pred_class)
 plot_roc_curve(y_test, y_pred_class)
 
+#2608 held out
+
+held_out = pd.read_csv("gold_standard_bias_annotation_doc_held_out.csv")
+
+heldout_X = held_out['Sentence'].fillna(' ')
+
+heldout_X_train_dtm = vect.fit_transform(heldout_X)
+
+heldout_pred_class = nb.predict(heldout_X_train_dtm)
+held_out['predicted_label']= heldout_pred_class
+heldout_y = held_out['quote_use'].fillna(' ')
+
+held_out.to_csv("labeled_heldout.csv")
