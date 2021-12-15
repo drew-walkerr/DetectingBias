@@ -1,0 +1,397 @@
+---
+title: "tables_for_scare_quotes"
+author: "Drew Walker"
+date: "12/14/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(table1)
+library(tidytext)
+library(tm)
+```
+
+```{r, load-data}
+labeled_heldout <- read_csv("labeled_heldout.csv")
+
+test_set <- read_csv("gold_standard_bias_annotation_doc_training_1200.csv")
+```
+# By Patient Summary DFs
+
+This will show the breakdown of quoted counts, number of charts, providers, admissions by patient in both held out and test sets 
+```{r patients-dfs}
+
+# Number of quoted sentences
+test_by_subject_id <- test_set %>% 
+  group_by(SUBJECT_ID) %>% 
+  summarize(quote_count = n())
+
+heldout_by_subject_id <- labeled_heldout %>% 
+  group_by(SUBJECT_ID) %>% 
+  summarize(quote_count = n())
+# Number of charts
+test_charts <-test_set %>% 
+  group_by(SUBJECT_ID) %>% 
+  distinct(ROW_ID_x) %>% 
+  summarize(chart_count = n())
+
+heldout_charts <-labeled_heldout %>% 
+  group_by(SUBJECT_ID) %>% 
+  distinct(ROW_ID_x) %>% 
+  summarize(chart_count = n())
+
+# Number of admissions
+test_adm <-test_set %>% 
+  group_by(SUBJECT_ID) %>% 
+  distinct(HADM_ID) %>% 
+  summarize(admission_count = n())
+
+heldout_adm <-labeled_heldout %>% 
+  group_by(SUBJECT_ID) %>% 
+  distinct(HADM_ID) %>% 
+  summarize(admission_count = n())
+
+# Number of providers writing quotes 
+
+# Number of admissions
+test_providers <-test_set %>% 
+  group_by(SUBJECT_ID) %>% 
+  distinct(CGID) %>% 
+  summarize(provider_count = n())
+
+heldout_providers <-labeled_heldout %>% 
+  group_by(SUBJECT_ID) %>% 
+  distinct(CGID) %>% 
+  summarize(provider_count = n())
+
+# Merge dataframes by patient 
+
+test_quotes_patient_df <- plyr::join_all(list(test_by_subject_id,test_charts,test_adm,test_providers), by='SUBJECT_ID', type='left') 
+
+heldout_quotes_patient_df <- plyr::join_all(list(heldout_by_subject_id,heldout_charts,heldout_adm,heldout_providers), by='SUBJECT_ID', type='left') 
+
+
+# Test table 1 
+table1(~quote_count + chart_count + admission_count+provider_count, data= test_quotes_patient_df)
+
+# Heldout table 1
+
+table1(~quote_count + chart_count + admission_count+provider_count, data= heldout_quotes_patient_df)
+
+
+```
+# Summary Label DF Frequencies
+These summary tables show how many different quotes found, charts, providers, and admissions per each quote type
+```{r categories-df}
+labeled_heldout$predicted_label <- as.factor(labeled_heldout$predicted_label)
+#Number of quoted sentences
+test_by_label <- test_set %>% 
+  group_by(quote_use) %>% 
+  summarize(quote_count = n())
+
+heldout_by_label <- labeled_heldout %>% 
+  group_by(predicted_label) %>% 
+  summarize(quote_count = n()) 
+# Number of charts
+test_charts_label <-test_set %>% 
+  group_by(quote_use) %>% 
+  distinct(ROW_ID_x) %>% 
+  summarize(chart_count = n())
+
+heldout_charts_label <-labeled_heldout %>% 
+  group_by(predicted_label) %>% 
+  distinct(ROW_ID_x) %>% 
+  summarize(chart_count = n())
+
+
+# Number of providers
+test_providers_label <-test_set %>% 
+  group_by(quote_use) %>% 
+  distinct(CGID) %>% 
+  summarize(provider_count = n())
+
+heldout_providers_label <-labeled_heldout %>% 
+  group_by(predicted_label) %>% 
+  distinct(CGID) %>% 
+  summarize(provider_count = n())
+
+heldout_adm_label <-labeled_heldout %>% 
+  group_by(predicted_label) %>% 
+  distinct(HADM_ID) %>% 
+  summarize(admission_count = n())
+
+test_adm_label <-test_set %>% 
+  group_by(quote_use) %>% 
+  distinct(HADM_ID) %>% 
+  summarize(admission_count = n())
+# Merge dataframes by patient 
+
+test_label_df <- plyr::join_all(list(test_by_label,test_charts_label,test_providers_label,test_adm_label), by='quote_use', type='left') 
+
+
+
+heldout_quotes_patient_df <- plyr::join_all(list(heldout_by_label,heldout_charts_label,heldout_providers_label,heldout_adm_label), by='predicted_label', type='left') 
+
+
+# Test table 1 
+table1(~quote_count + chart_count + admission_count+provider_count|quote_use, data= test_label_df)
+
+# Heldout table 1
+
+table1(~quote_count + chart_count + admission_count+provider_count|predicted_label, data= heldout_quotes_patient_df)
+
+
+
+```
+
+# ICC Data Prep
+# By Patients 
+
+## Test Set 
+```{r test-counts-patients}
+test_quote_use_df_table <- test_set %>% 
+  group_by(SUBJECT_ID) %>% 
+  mutate(quote_label = case_when(quote_use == 0 ~"Helpful",
+                   quote_use == 1 ~"Harmful",
+                   quote_use == 2 ~"Possibly_Harmful",
+                   quote_use == 3 ~"Not_Applicable")) %>% 
+  pivot_wider(names_from = quote_label,values_from = quote_label) 
+test_quote_use_df_table$Harmful <- as.factor(test_quote_use_df_table$Harmful)
+test_quote_use_df_table$Helpful <- as.factor(test_quote_use_df_table$Helpful)
+test_quote_use_df_table$Possibly_Harmful <- as.factor(test_quote_use_df_table$Possibly_Harmful)
+test_quote_use_df_table$Not_Applicable <- as.factor(test_quote_use_df_table$Not_Applicable)
+
+# Class counts for heldout patients
+test_patient_harmful_count <- table(test_quote_use_df_table$SUBJECT_ID, test_quote_use_df_table$Harmful)
+
+test_patient_harmful_count_df <- as.data.frame.matrix(test_patient_harmful_count)
+test_patient_harmful_count_df$SUBJECT_ID <- rownames(test_patient_harmful_count_df)
+
+test_patient_helpful_count <- table(test_quote_use_df_table$SUBJECT_ID, test_quote_use_df_table$Helpful)
+
+test_patient_helpful_count_df <- as.data.frame.matrix(test_patient_helpful_count)
+test_patient_helpful_count_df$SUBJECT_ID <- rownames(test_patient_helpful_count_df)
+
+
+test_patient_poss_harmful_count <- table(test_quote_use_df_table$SUBJECT_ID, test_quote_use_df_table$Possibly_Harmful)
+
+test_patient_poss_harmful_count_df <- as.data.frame.matrix(test_patient_poss_harmful_count)
+test_patient_poss_harmful_count_df$SUBJECT_ID <- rownames(test_patient_poss_harmful_count_df)
+
+test_patient_na_count <- table(test_quote_use_df_table$SUBJECT_ID, test_quote_use_df_table$Not_Applicable)
+
+test_patient_na_count_df <- as.data.frame.matrix(test_patient_na_count,row.names = NULL)
+test_patient_na_count_df$SUBJECT_ID <- rownames(test_patient_na_count_df)
+
+test_total_notes_patient <- table(test_quote_use_df_table$SUBJECT_ID)
+test_total_notes_patient_df <- as.data.frame(test_total_notes_patient,row.names = NULL)
+test_total_notes_patient_df <- test_total_notes_patient_df %>% 
+  rename(SUBJECT_ID = Var1,
+         total_notes = Freq)
+
+test_class_count_patient <- plyr::join_all(list(test_patient_harmful_count_df,test_patient_helpful_count_df,test_patient_poss_harmful_count_df,test_patient_na_count_df,test_total_notes_patient_df), by='SUBJECT_ID', type='left') %>% 
+  select(SUBJECT_ID,Helpful,Harmful,Possibly_Harmful,Not_Applicable,total_notes)
+```
+
+test_class_count_patient is a table that has note types/totals per patient in the test set. 
+
+## Labeled Set 
+```{r labeled-counts-patients}
+labeled_quote_use_df_table <- labeled_heldout %>% 
+  group_by(SUBJECT_ID) %>% 
+  mutate(quote_label = case_when(predicted_label == 0 ~"Helpful",
+                   predicted_label == 1 ~"Harmful",
+                   predicted_label == 2 ~"Possibly_Harmful",
+                   predicted_label == 3 ~"Not_Applicable")) %>% 
+  pivot_wider(names_from = quote_label,values_from = quote_label) 
+labeled_quote_use_df_table$Harmful <- as.factor(labeled_quote_use_df_table$Harmful)
+labeled_quote_use_df_table$Helpful <- as.factor(labeled_quote_use_df_table$Helpful)
+labeled_quote_use_df_table$Possibly_Harmful <- as.factor(labeled_quote_use_df_table$Possibly_Harmful)
+labeled_quote_use_df_table$Not_Applicable <- as.factor(labeled_quote_use_df_table$Not_Applicable)
+
+# Class counts for heldout patients
+labeled_patient_harmful_count <- table(labeled_quote_use_df_table$SUBJECT_ID, labeled_quote_use_df_table$Harmful)
+
+labeled_patient_harmful_count_df <- as.data.frame.matrix(labeled_patient_harmful_count)
+labeled_patient_harmful_count_df$SUBJECT_ID <- rownames(labeled_patient_harmful_count_df)
+
+labeled_patient_helpful_count <- table(labeled_quote_use_df_table$SUBJECT_ID, labeled_quote_use_df_table$Helpful)
+
+labeled_patient_helpful_count_df <- as.data.frame.matrix(labeled_patient_helpful_count)
+labeled_patient_helpful_count_df$SUBJECT_ID <- rownames(labeled_patient_helpful_count_df)
+
+
+labeled_patient_poss_harmful_count <- table(labeled_quote_use_df_table$SUBJECT_ID, labeled_quote_use_df_table$Possibly_Harmful)
+
+labeled_patient_poss_harmful_count_df <- as.data.frame.matrix(labeled_patient_poss_harmful_count)
+labeled_patient_poss_harmful_count_df$SUBJECT_ID <- rownames(labeled_patient_poss_harmful_count_df)
+
+labeled_patient_na_count <- table(labeled_quote_use_df_table$SUBJECT_ID, labeled_quote_use_df_table$Not_Applicable)
+
+labeled_patient_na_count_df <- as.data.frame.matrix(labeled_patient_na_count,row.names = NULL)
+labeled_patient_na_count_df$SUBJECT_ID <- rownames(labeled_patient_na_count_df)
+
+labeled_total_notes_patient <- table(labeled_quote_use_df_table$SUBJECT_ID)
+labeled_total_notes_patient_df <- as.data.frame(labeled_total_notes_patient,row.names = NULL)
+labeled_total_notes_patient_df <- labeled_total_notes_patient_df %>% 
+  rename(SUBJECT_ID = Var1,
+         total_notes = Freq)
+
+labeled_class_count_patient <- plyr::join_all(list(labeled_patient_harmful_count_df,labeled_patient_helpful_count_df,labeled_patient_poss_harmful_count_df,labeled_patient_na_count_df,labeled_total_notes_patient_df), by='SUBJECT_ID', type='left') %>% 
+  select(SUBJECT_ID,Helpful,Harmful,Possibly_Harmful,Not_Applicable,total_notes)
+```
+# Providers 
+
+## Test set
+
+```{r test-counts-provider}
+test_quote_use_df_table_prov <- test_set %>% 
+  group_by(CGID) %>% 
+  mutate(quote_label = case_when(quote_use == 0 ~"Helpful",
+                   quote_use == 1 ~"Harmful",
+                   quote_use == 2 ~"Possibly_Harmful",
+                   quote_use == 3 ~"Not_Applicable")) %>% 
+  pivot_wider(names_from = quote_label,values_from = quote_label) 
+test_quote_use_df_table_prov$Harmful <- as.factor(test_quote_use_df_table_prov$Harmful)
+test_quote_use_df_table_prov$Helpful <- as.factor(test_quote_use_df_table_prov$Helpful)
+test_quote_use_df_table_prov$Possibly_Harmful <- as.factor(test_quote_use_df_table_prov$Possibly_Harmful)
+test_quote_use_df_table_prov$Not_Applicable <- as.factor(test_quote_use_df_table_prov$Not_Applicable)
+
+# Class counts for heldout providers
+test_provider_harmful_count <- table(test_quote_use_df_table_prov$CGID, test_quote_use_df_table_prov$Harmful)
+
+test_provider_harmful_count_df <- as.data.frame.matrix(test_provider_harmful_count)
+test_provider_harmful_count_df$CGID <- rownames(test_provider_harmful_count_df)
+
+test_provider_helpful_count <- table(test_quote_use_df_table_prov$CGID, test_quote_use_df_table_prov$Helpful)
+
+test_provider_helpful_count_df <- as.data.frame.matrix(test_provider_helpful_count)
+test_provider_helpful_count_df$CGID <- rownames(test_provider_helpful_count)
+
+
+test_provider_poss_harmful_count <- table(test_quote_use_df_table_prov$CGID, test_quote_use_df_table_prov$Possibly_Harmful)
+
+test_provider_poss_harmful_count_df <- as.data.frame.matrix(test_provider_poss_harmful_count)
+test_provider_poss_harmful_count_df$CGID <- rownames(test_provider_poss_harmful_count_df)
+
+test_provider_na_count <- table(test_quote_use_df_table_prov$CGID, test_quote_use_df_table_prov$Not_Applicable)
+
+test_provider_na_count_df <- as.data.frame.matrix(test_provider_na_count,row.names = NULL)
+test_provider_na_count_df$CGID <- rownames(test_provider_na_count_df)
+
+total_notes_prov <- table(test_quote_use_df_table_prov$CGID)
+total_notes_prov_df <- as.data.frame(total_notes_prov,row.names = NULL)
+total_notes_prov_df <- total_notes_prov_df %>% 
+  rename(CGID = Var1,
+         total_notes = Freq)
+
+test_class_count_provider <- plyr::join_all(list(test_provider_harmful_count_df,test_provider_helpful_count_df,test_provider_poss_harmful_count_df,test_provider_na_count_df,total_notes_prov_df), by='CGID', type='left') %>% 
+  select(CGID,Helpful,Harmful,Possibly_Harmful,Not_Applicable,total_notes)
+```
+## Labeled providers set 
+```{r labeled-counts-patients}
+labeled_quote_use_df_table_prov <- labeled_heldout %>% 
+  group_by(CGID) %>% 
+  mutate(quote_label = case_when(predicted_label == 0 ~"Helpful",
+                   predicted_label == 1 ~"Harmful",
+                   predicted_label == 2 ~"Possibly_Harmful",
+                   predicted_label == 3 ~"Not_Applicable")) %>% 
+  pivot_wider(names_from = quote_label,values_from = quote_label) 
+labeled_quote_use_df_table_prov$Harmful <- as.factor(labeled_quote_use_df_table_prov$Harmful)
+labeled_quote_use_df_table_prov$Helpful <- as.factor(labeled_quote_use_df_table_prov$Helpful)
+labeled_quote_use_df_table_prov$Possibly_Harmful <- as.factor(labeled_quote_use_df_table_prov$Possibly_Harmful)
+labeled_quote_use_df_table_prov$Not_Applicable <- as.factor(labeled_quote_use_df_table_prov$Not_Applicable)
+
+# Class counts for heldout patients
+labeled_prov_harmful_count <- table(labeled_quote_use_df_table_prov$CGID, labeled_quote_use_df_table_prov$Harmful)
+
+labeled_prov_harmful_count_df <- as.data.frame.matrix(labeled_prov_harmful_count)
+labeled_prov_harmful_count_df$CGID <- rownames(labeled_prov_harmful_count_df)
+
+labeled_prov_helpful_count <- table(labeled_quote_use_df_table_prov$CGID, labeled_quote_use_df_table_prov$Helpful)
+
+labeled_prov_helpful_count_df <- as.data.frame.matrix(labeled_prov_helpful_count)
+labeled_prov_helpful_count_df$CGID <- rownames(labeled_prov_helpful_count_df)
+
+
+labeled_prov_poss_harmful_count <- table(labeled_quote_use_df_table_prov$CGID, labeled_quote_use_df_table_prov$Possibly_Harmful)
+
+labeled_prov_poss_harmful_count_df <- as.data.frame.matrix(labeled_prov_poss_harmful_count)
+labeled_prov_poss_harmful_count_df$CGID <- rownames(labeled_prov_poss_harmful_count_df)
+
+labeled_prov_na_count <- table(labeled_quote_use_df_table_prov$CGID, labeled_quote_use_df_table_prov$Not_Applicable)
+
+labeled_prov_na_count_df <- as.data.frame.matrix(labeled_prov_na_count,row.names = NULL)
+labeled_prov_na_count_df$CGID <- rownames(labeled_prov_na_count_df)
+
+labeled_total_notes_prov <- table(labeled_quote_use_df_table_prov$CGID)
+labeled_total_notes_prov_df <- as.data.frame(labeled_total_notes_prov,row.names = NULL)
+labeled_total_notes_prov_df <- labeled_total_notes_prov_df %>% 
+  rename(CGID = Var1,
+         total_notes = Freq)
+
+labeled_class_count_prov <- plyr::join_all(list(labeled_prov_harmful_count_df,labeled_prov_helpful_count_df,labeled_prov_poss_harmful_count_df,labeled_prov_na_count_df,labeled_total_notes_prov_df), by='CGID', type='left') %>% 
+  select(CGID,Helpful,Harmful,Possibly_Harmful,Not_Applicable,total_notes)
+```
+
+# Types of Notes Quotes 
+## Test set
+
+```{r test-counts-notes}
+test_set$CATEGORY <- as.factor(test_set$CATEGORY)
+test_quote_use_df_table_notes <- test_set %>% 
+  group_by(CATEGORY) %>% 
+  mutate(quote_label = case_when(quote_use == 0 ~"Helpful",
+                   quote_use == 1 ~"Harmful",
+                   quote_use == 2 ~"Possibly_Harmful",
+                   quote_use == 3 ~"Not_Applicable")) %>% 
+  pivot_wider(names_from = quote_label,values_from = quote_label) 
+test_quote_use_df_table_notes$Harmful <- as.factor(test_quote_use_df_table_notes$Harmful)
+test_quote_use_df_table_notes$Helpful <- as.factor(test_quote_use_df_table_notes$Helpful)
+test_quote_use_df_table_notes$Possibly_Harmful <- as.factor(test_quote_use_df_table_notes$Possibly_Harmful)
+test_quote_use_df_table_notes$Not_Applicable <- as.factor(test_quote_use_df_table_notes$Not_Applicable)
+
+# Class counts for heldout providers
+test_note_harmful_count <- table(test_quote_use_df_table_notes$CATEGORY, test_quote_use_df_table_notes$Harmful)
+
+test_note_harmful_count_df <- as.data.frame.matrix(test_note_harmful_count)
+test_note_harmful_count_df$CATEGORY <- rownames(test_note_harmful_count_df)
+
+test_note_helpful_count <- table(test_quote_use_df_table_notes$CATEGORY, test_quote_use_df_table_notes$Helpful)
+
+test_note_helpful_count_df <- as.data.frame.matrix(test_note_helpful_count)
+test_note_helpful_count_df$CATEGORY <- rownames(test_note_helpful_count_df)
+
+
+test_note_poss_harmful_count <- table(test_quote_use_df_table_notes$CATEGORY, test_quote_use_df_table_notes$Possibly_Harmful)
+
+test_note_poss_harmful_count_df <- as.data.frame.matrix(test_note_poss_harmful_count)
+test_note_poss_harmful_count_df$CATEGORY <- rownames(test_note_poss_harmful_count_df)
+
+test_note_na_count <- table(test_quote_use_df_table_notes$CATEGORY, test_quote_use_df_table_notes$Not_Applicable)
+
+test_note_na_count_df <- as.data.frame.matrix(test_note_na_count,row.names = NULL)
+test_note_na_count_df$CATEGORY <- rownames(test_note_na_count_df)
+
+total_notes <- table(test_quote_use_df_table_notes$CATEGORY)
+test_total_notes_df <- as.data.frame(total_notes,row.names = NULL)
+test_total_notes_df$CATEGORY <- rownames(total_notes)
+test_total_notes_df <- test_total_notes_df %>% 
+  rename(CATEGORY = Var1,
+         total_notes = Freq)
+
+test_class_count_note <- plyr::join_all(list(test_note_harmful_count_df,test_note_helpful_count_df,test_note_poss_harmful_count_df,test_note_na_count_df,test_total_notes_df), by='CATEGORY', type='left') %>% 
+  select(CATEGORY,Helpful,Harmful,Possibly_Harmful,Not_Applicable,total_notes)
+
+
+```
+
+
+# ICC for patients and providers and note types
+https://cran.r-project.org/web/packages/iccCounts/index.html
+```{r count-icc}
+library(iccCounts)
+```
+
