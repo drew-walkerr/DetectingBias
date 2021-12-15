@@ -291,7 +291,9 @@ test_class_count_provider <- plyr::join_all(list(test_provider_harmful_count_df,
   select(CGID,Helpful,Harmful,Possibly_Harmful,Not_Applicable,total_notes)
 ```
 ## Labeled providers set 
-```{r labeled-counts-patients}
+
+
+```{r labeled-counts-providers}
 labeled_quote_use_df_table_prov <- labeled_heldout %>% 
   group_by(CGID) %>% 
   mutate(quote_label = case_when(predicted_label == 0 ~"Helpful",
@@ -337,7 +339,7 @@ labeled_class_count_prov <- plyr::join_all(list(labeled_prov_harmful_count_df,la
 ```
 
 # Types of Notes Quotes 
-## Test set
+## Test set types of notes
 
 ```{r test-counts-notes}
 test_set$CATEGORY <- as.factor(test_set$CATEGORY)
@@ -387,11 +389,76 @@ test_class_count_note <- plyr::join_all(list(test_note_harmful_count_df,test_not
 
 
 ```
+## Labeled set types of notes
+This is the dataset from the labeled dataframe grouped by types of notes (Nursing, physician, etc)
+```{r labeled-counts-providers}
+labeled_quote_use_df_table_note <- labeled_heldout %>% 
+  group_by(CATEGORY) %>% 
+  mutate(quote_label = case_when(predicted_label == 0 ~"Helpful",
+                   predicted_label == 1 ~"Harmful",
+                   predicted_label == 2 ~"Possibly_Harmful",
+                   predicted_label == 3 ~"Not_Applicable")) %>% 
+  pivot_wider(names_from = quote_label,values_from = quote_label) 
+labeled_quote_use_df_table_note$Harmful <- as.factor(labeled_quote_use_df_table_note$Harmful)
+labeled_quote_use_df_table_note$Helpful <- as.factor(labeled_quote_use_df_table_note$Helpful)
+labeled_quote_use_df_table_note$Possibly_Harmful <- as.factor(labeled_quote_use_df_table_note$Possibly_Harmful)
+labeled_quote_use_df_table_note$Not_Applicable <- as.factor(labeled_quote_use_df_table_note$Not_Applicable)
+
+# Class counts for heldout patients
+labeled_notes_harmful_count <- table(labeled_quote_use_df_table_note$CATEGORY, labeled_quote_use_df_table_note$Harmful)
+
+labeled_notes_harmful_count_df <- as.data.frame.matrix(labeled_notes_harmful_count)
+labeled_notes_harmful_count_df$CATEGORY <- rownames(labeled_notes_harmful_count_df)
+
+labeled_note_helpful_count <- table(labeled_quote_use_df_table_note$CATEGORY, labeled_quote_use_df_table_note$Helpful)
+
+labeled_note_helpful_count_df <- as.data.frame.matrix(labeled_note_helpful_count)
+labeled_note_helpful_count_df$CATEGORY <- rownames(labeled_note_helpful_count_df)
+
+
+labeled_note_poss_harmful_count <- table(labeled_quote_use_df_table_note$CATEGORY, labeled_quote_use_df_table_note$Possibly_Harmful)
+
+labeled_note_poss_harmful_count_df <- as.data.frame.matrix(labeled_note_poss_harmful_count)
+labeled_note_poss_harmful_count_df$CATEGORY <- rownames(labeled_note_poss_harmful_count_df)
+
+labeled_note_na_count <- table(labeled_quote_use_df_table_note$CATEGORY, labeled_quote_use_df_table_note$Not_Applicable)
+
+labeled_note_na_count_df <- as.data.frame.matrix(labeled_note_na_count,row.names = NULL)
+labeled_note_na_count_df$CATEGORY <- rownames(labeled_note_na_count_df)
+
+labeled_total_notes_note <- table(labeled_quote_use_df_table_note$CATEGORY)
+labeled_total_notes_note_df <- as.data.frame(labeled_total_notes_note,row.names = NULL)
+labeled_total_notes_note_df <- labeled_total_notes_note_df %>% 
+  rename(CATEGORY = Var1,
+         total_notes = Freq)
+
+labeled_class_count_note <- plyr::join_all(list(labeled_notes_harmful_count_df,labeled_note_helpful_count_df,labeled_note_poss_harmful_count_df,labeled_note_na_count_df,labeled_total_notes_note_df), by='CATEGORY', type='left') %>% 
+  select(CATEGORY,Helpful,Harmful,Possibly_Harmful,Not_Applicable,total_notes)
+```
+
+Labeled Tables for analyses
+```{r tables-analyses}
+#Labeleds
+head(labeled_class_count_note)
+head(labeled_class_count_patient)
+head(labeled_class_count_prov)
+
+```
+
+## Test tables for analysis
+
+```{r test-tables-analysis}
+head(test_class_count_note)
+head(test_class_count_patient)
+head(test_class_count_provider)
+```
 
 
 # ICC for patients and providers and note types
 https://cran.r-project.org/web/packages/iccCounts/index.html
 ```{r count-icc}
+
+
 library(iccCounts)
 ```
 
