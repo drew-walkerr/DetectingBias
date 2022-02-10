@@ -1,6 +1,6 @@
 # DetectingBias
 
-This code is part of a project on detecting bias in clinical notes in the MIMIC-III dataset for sample of patients with sickle cell disease. 
+This code is part of a project on detecting bias in clinical notes in the MIMIC-III dataset for sample of patients with chronic illnesses. 
 
 
 # Author
